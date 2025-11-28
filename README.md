@@ -1,5 +1,7 @@
 # lua-ci
 
+[![build](https://github.com/mah0x211/lua-ci/actions/workflows/build.yml/badge.svg)](https://github.com/mah0x211/lua-ci/actions/workflows/build.yml)
+
 Custom Docker image for GitHub Actions CI with lenv-managed Lua/LuaRocks.
 
 - Base image: `debian:<suite>-slim` (default: `bookworm-slim`, override via `DEBIAN_SUITE` build-arg)
@@ -24,14 +26,18 @@ docker build \
   .
 ```
 
-For multi-arch (amd64/arm64) publishing:
+For release builds (pushed to GHCR):
 
 ```sh
 docker buildx build \
-  --platform linux/amd64,linux/arm64 \
+  --platform linux/amd64 \
   --push \
-  -t ghcr.io/mah0x211/lua-ci:5.4 .
+  -t ghcr.io/mah0x211/lua-ci:bookworm .
 ```
+
+## CI / Release workflows (GitHub Actions)
+
+- `build.yml`: runs on branch pushes (tags are ignored; docs/licence-only changes are ignored), builds and smoke-tests (no push).
 
 ## Use
 

@@ -1,0 +1,99 @@
+name: build
+
+on:
+  push:
+    tags-ignore:
+      - '*'
+    branches:
+      - '**'
+    paths-ignore:
+      - '**/*.md'
+      - 'LICENSE'
+
+env:
+  IMAGE_NAME: ghcr.io/mah0x211/lua-ci
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write  # required to save BuildKit cache (type=gha)
+
+    strategy:
+      matrix:
+        debian_suite: [bullseye, bookworm]
+
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+      -
+        name: Build (load locally)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          build-args: DEBIAN_SUITE=${{ matrix.debian_suite }}
+          cache-from: type=gha,scope=${{ matrix.debian_suite }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.debian_suite }}
+          tags: ${{ env.IMAGE_NAME }}:local
+      -
+        name: Smoke test
+        env:
+          IMAGE: ${{ env.IMAGE_NAME }}:local
+        run: |
+          set -euo pipefail
+
+          check_lua() {
+            local lua_version="$1"    # empty means default
+            local label="Lua ${1}x"   # label for logging
+            local pattern="^Lua ${1}" # expected version regex
+
+            # Adjust for special cases
+            if [ -z "${lua_version}" ]; then
+              label="default Lua"
+              pattern='^Lua 5\.4\.'
+            elif [ "${lua_version}" = "lj-v2.1" ]; then
+              label="LuaJIT 2.1"
+              pattern='^LuaJIT 2\.1\.'
+            fi
+
+            echo "::group::Lua smoke test: ${label}"
+
+            local out
+            out="$(docker run --rm -e LUA_VERSION=${lua_version} "${IMAGE}" lua -v 2>&1 || true)"
+
+            echo "${out}"
+
+            if ! grep -qE "${pattern}" <<<"${out}"; then
+              echo "Unexpected Lua version for ${label}: ${out}" >&2
+              exit 1
+            fi
+
+            echo "::endgroup::"
+          }
+
+          # Default version (e.g., 5.4 series)
+          # Whether to pin to patch level or just major/minor is up to you
+          check_lua ""
+
+          # Version specified (adjust according to image-side specification)
+          check_lua "5.1."
+          check_lua "5.2."
+          check_lua "5.3."
+          check_lua "5.4."
+
+          # LuaJIT 2.1
+          check_lua "lj-v2.1"
+
+          # Check if LuaRocks is alive as well
+          lr_out="$(docker run --rm "${IMAGE}" luarocks --version 2>&1 || true)"
+          echo "${lr_out}"
+          if ! grep -qi 'luarocks' <<<"${lr_out}"; then
+            echo "Unexpected or missing LuaRocks: ${lr_out}" >&2
+            exit 1
+          fi

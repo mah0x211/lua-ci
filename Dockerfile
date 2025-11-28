@@ -1,4 +1,5 @@
-FROM debian:bookworm-slim
+ARG DEBIAN_SUITE=bookworm
+FROM debian:${DEBIAN_SUITE}-slim
 
 LABEL org.opencontainers.image.title="lua-ci" \
       org.opencontainers.image.description="Lua CI base image with lenv-managed Lua/LuaRocks" \
@@ -68,17 +69,18 @@ ARG LUAROCKS_VERSION=latest
 
 # Fetch version metadata and install Lua + LuaRocks.
 RUN set -eux; \
-    lenv fetch; \
+    lenv -g fetch; \
     for ver in ${LUA_VERSIONS}; do \
       if [[ "${ver}" == lj-* ]]; then \
-        lenv install "${ver}:${LUAROCKS_VERSION}"; \
+        lenv -g install "${ver}:${LUAROCKS_VERSION}"; \
       else \
-        lenv install "${ver}:${LUAROCKS_VERSION}" linux; \
+        lenv -g install "${ver}:${LUAROCKS_VERSION}" linux; \
       fi; \
     done; \
-    lenv use "5.4"; \
+    lenv -g use "5.4"; \
     lenv -g path > /etc/profile.d/lenv.sh; \
-    rm -rf "${LENV_ROOT}/src"
+    rm -rf "${LENV_ROOT}/src"; \
+    mkdir -p "${LENV_ROOT}/src"
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

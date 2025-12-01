@@ -1,9 +1,6 @@
 ARG DEBIAN_SUITE=bookworm
-FROM debian:${DEBIAN_SUITE}-slim
 
-LABEL org.opencontainers.image.title="lua-ci" \
-      org.opencontainers.image.description="Lua CI base image with lenv-managed Lua/LuaRocks" \
-      org.opencontainers.image.source="https://github.com/mah0x211/lua-ci"
+FROM debian:${DEBIAN_SUITE}-slim AS builder
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
@@ -79,9 +76,43 @@ RUN set -eux; \
       fi; \
     done; \
     lenv -g use "5.4"; \
-    lenv -g path > /etc/profile.d/lenv.sh; \
-    rm -rf "${LENV_ROOT}/src"; \
-    mkdir -p "${LENV_ROOT}/src"
+    find "${LENV_ROOT}/src" -mindepth 1 -delete
+
+FROM builder
+
+LABEL org.opencontainers.image.title="lua-ci" \
+      org.opencontainers.image.description="Lua CI base image with lenv-managed Lua/LuaRocks" \
+      org.opencontainers.image.source="https://github.com/mah0x211/lua-ci"
+
+ARG LUA_PATH
+ARG LUA_CPATH
+
+# Set Lua search paths provided at build time.
+ENV LUA_PATH="${LUA_PATH}" \
+    LUA_CPATH="${LUA_CPATH}"
+
+# Validate that provided paths match lenv output.
+RUN set -eux; \
+    expected_lua_path="$(lenv -g path lualib)"; \
+    expected_lua_cpath="$(lenv -g path luaclib)"; \
+    if [ -z "${LUA_PATH}" ] || [ -z "${LUA_CPATH}" ]; then \
+      echo "LUA_PATH/LUA_CPATH must be provided via build-args" >&2; \
+      exit 1; \
+    fi; \
+    if [ "${LUA_PATH}" != "${expected_lua_path}" ]; then \
+      echo "LUA_PATH mismatch"; \
+      echo "expected: ${expected_lua_path}"; \
+      echo "actual:   ${LUA_PATH}"; \
+      exit 1; \
+    fi; \
+    echo "LUA_PATH matches expected value: ${expected_lua_path}"; \
+    if [ "${LUA_CPATH}" != "${expected_lua_cpath}" ]; then \
+      echo "LUA_CPATH mismatch"; \
+      echo "expected: ${expected_lua_cpath}"; \
+      echo "actual:   ${LUA_CPATH}"; \
+      exit 1; \
+    fi; \
+    echo "LUA_CPATH matches expected value: ${expected_lua_cpath}"
 
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

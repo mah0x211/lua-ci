@@ -38,6 +38,10 @@ docker buildx build \
 ## CI / Release workflows (GitHub Actions)
 
 - `build.yml`: runs on branch pushes (tags are ignored; docs/licence-only changes are ignored), builds and smoke-tests (no push).
+- `rlease.yml`: runs when a date-based Git tag is pushed (e.g. `20250521` or `20250521-1`, and only if the tag is reachable from `master`), builds/pushes `bookworm`/`bullseye` images to GHCR with tags:
+  - `${suite}-${git_tag}` (e.g. `bookworm-20250521-1`)
+  - `${suite}` (rolling)
+  - `latest` (only for ${LATEST_SUITE} in workflow; default bookworm)
 
 ## Use
 

@@ -1,0 +1,142 @@
+name: image-build
+description: Build and test Lua CI image (no push)
+inputs:
+  debian_suite:
+    description: Debian suite (e.g., bullseye, bookworm)
+    required: true
+outputs:
+  lua_path:
+    description: Extracted LUA_PATH from lenv -g path lualib
+    value: ${{ steps.extract_lua_paths.outputs.lua_path }}
+  lua_cpath:
+    description: Extracted LUA_CPATH from lenv -g path luaclib
+    value: ${{ steps.extract_lua_paths.outputs.lua_cpath }}
+
+runs:
+  using: composite
+  steps:
+    -
+      name: Set up Buildx
+      uses: docker/setup-buildx-action@v3
+    -
+      name: Build (builder stage only, no push)
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        push: false
+        load: true
+        target: builder
+        build-args: DEBIAN_SUITE=${{ inputs.debian_suite }}
+        cache-from: type=gha,scope=${{ inputs.debian_suite }}
+        cache-to: type=gha,mode=max,scope=${{ inputs.debian_suite }}
+        tags: ghcr.io/mah0x211/lua-ci:local
+    -
+      name: Extract Lua paths from built image
+      id: extract_lua_paths
+      env:
+        IMAGE: ghcr.io/mah0x211/lua-ci:local
+      shell: bash
+      run: |
+        set -euo pipefail
+        lua_path="$(docker run --rm "${IMAGE}" lenv -g path lualib)"
+        lua_cpath="$(docker run --rm "${IMAGE}" lenv -g path luaclib)"
+        echo "lua_path=${lua_path}" | tee -a "$GITHUB_STEP_SUMMARY"
+        echo "lua_cpath=${lua_cpath}" | tee -a "$GITHUB_STEP_SUMMARY"
+        {
+          echo "lua_path<<EOF"
+          echo "${lua_path}"
+          echo "EOF"
+          echo "lua_cpath<<EOF"
+          echo "${lua_cpath}"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+    -
+      name: Build final image (load locally)
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        push: false
+        load: true
+        platforms: linux/amd64
+        build-args: |
+          DEBIAN_SUITE=${{ inputs.debian_suite }}
+          LUA_PATH=${{ steps.extract_lua_paths.outputs.lua_path }}
+          LUA_CPATH=${{ steps.extract_lua_paths.outputs.lua_cpath }}
+        tags: ghcr.io/mah0x211/lua-ci:local
+        cache-from: type=gha,scope=${{ inputs.debian_suite }}
+    -
+      name: Smoke test
+      env:
+        IMAGE: ghcr.io/mah0x211/lua-ci:local
+        LUA_PATH_EXPECTED: ${{ steps.extract_lua_paths.outputs.lua_path }}
+        LUA_CPATH_EXPECTED: ${{ steps.extract_lua_paths.outputs.lua_cpath }}
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        IMAGE_TAG="${IMAGE}"
+
+        check_lua() {
+          local lua_version="$1"    # empty means default
+          local label="Lua ${1}x"   # label for logging
+          local pattern="^Lua ${1}" # expected version regex
+
+          if [ -z "${lua_version}" ]; then
+            label="default Lua"
+            pattern='^Lua 5\.4\.'
+          elif [ "${lua_version}" = "lj-v2.1" ]; then
+            label="LuaJIT 2.1"
+            pattern='^LuaJIT 2\.1\.'
+          fi
+
+          echo "::group::Lua smoke test: ${label}"
+          local out
+          out="$(docker run --rm -e LUA_VERSION=${lua_version} "${IMAGE_TAG}" lua -v 2>&1 || true)"
+          echo "${out}"
+          if ! grep -qE "${pattern}" <<<"${out}"; then
+            echo "Unexpected Lua version for ${label}: ${out}" >&2
+            exit 1
+          fi
+          echo "::endgroup::"
+        }
+
+        check_lua ""
+        check_lua "5.1."
+        check_lua "5.2."
+        check_lua "5.3."
+        check_lua "5.4."
+        check_lua "lj-v2.1"
+
+        lr_out="$(docker run --rm "${IMAGE_TAG}" luarocks --version 2>&1 || true)"
+        echo "${lr_out}"
+        if ! grep -qi 'luarocks' <<<"${lr_out}"; then
+          echo "Unexpected or missing LuaRocks: ${lr_out}" >&2
+          exit 1
+        fi
+
+        docker run --rm \
+          -e LUA_PATH_EXPECTED="${LUA_PATH_EXPECTED}" \
+          -e LUA_CPATH_EXPECTED="${LUA_CPATH_EXPECTED}" \
+          "${IMAGE_TAG}" bash -c '
+            set -euo pipefail
+            echo "Checking LUA_PATH inside the container"
+            echo "expected: ${LUA_PATH_EXPECTED}"
+            echo "actual:   ${LUA_PATH}"
+            if [ "${LUA_PATH}" != "${LUA_PATH_EXPECTED}" ]; then
+              echo "LUA_PATH mismatch"
+              exit 1
+            fi
+            echo "Checking LUA_CPATH inside the container"
+            echo "expected: ${LUA_CPATH_EXPECTED}"
+            echo "actual:   ${LUA_CPATH}"
+            if [ "${LUA_CPATH}" != "${LUA_CPATH_EXPECTED}" ]; then
+              echo "LUA_CPATH mismatch"
+              exit 1
+            fi
+          '
+
+        echo "::group::LuaRocks smoke test: luacov installation"
+        docker run --rm "${IMAGE_TAG}" bash -euxo pipefail -c '
+          luarocks install luacov
+          lua -e "require(\"luacov\")"
+        '

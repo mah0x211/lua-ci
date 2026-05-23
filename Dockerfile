@@ -99,20 +99,27 @@ ENV LUA_PATH="${LUA_PATH}" \
 
 # Validate that provided paths match lenv output.
 RUN set -eux; \
+    normalize_path_list() { \
+      printf '%s' "$1" | tr ';' '\n' | sed '/^$/d' | LC_ALL=C sort; \
+    }; \
     expected_lua_path="$(lenv -g path lualib)"; \
     expected_lua_cpath="$(lenv -g path luaclib)"; \
     if [ -z "${LUA_PATH}" ] || [ -z "${LUA_CPATH}" ]; then \
       echo "LUA_PATH/LUA_CPATH must be provided via build-args" >&2; \
       exit 1; \
     fi; \
-    if [ "${LUA_PATH}" != "${expected_lua_path}" ]; then \
+    normalized_lua_path="$(normalize_path_list "${LUA_PATH}")"; \
+    normalized_expected_lua_path="$(normalize_path_list "${expected_lua_path}")"; \
+    if [ "${normalized_lua_path}" != "${normalized_expected_lua_path}" ]; then \
       echo "LUA_PATH mismatch"; \
       echo "expected: ${expected_lua_path}"; \
       echo "actual:   ${LUA_PATH}"; \
       exit 1; \
     fi; \
     echo "LUA_PATH matches expected value: ${expected_lua_path}"; \
-    if [ "${LUA_CPATH}" != "${expected_lua_cpath}" ]; then \
+    normalized_lua_cpath="$(normalize_path_list "${LUA_CPATH}")"; \
+    normalized_expected_lua_cpath="$(normalize_path_list "${expected_lua_cpath}")"; \
+    if [ "${normalized_lua_cpath}" != "${normalized_expected_lua_cpath}" ]; then \
       echo "LUA_CPATH mismatch"; \
       echo "expected: ${expected_lua_cpath}"; \
       echo "actual:   ${LUA_CPATH}"; \

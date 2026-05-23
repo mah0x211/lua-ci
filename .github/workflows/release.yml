@@ -19,7 +19,7 @@ jobs:
       actions: write  # required to save BuildKit cache (type=gha)
     strategy:
       matrix:
-        debian_suite: [bullseye, bookworm]
+        debian_suite: [bullseye, bookworm, trixie]
     steps:
       -
         name: Checkout

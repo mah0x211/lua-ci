@@ -9,10 +9,10 @@ Custom Docker image for GitHub Actions CI with lenv-managed Lua/LuaRocks.
 - Installed Lua versions: `5.1.x`, `5.2.x`, `5.3.x`, `5.4.x`, `LuaJIT v2.1` (latest patch available in lenv; switch via `LUA_VERSION` env)
 - LuaRocks: latest available in lenv
 - Installed tooling and dev libs (for common LuaRocks builds):
-  - Build tools: `build-essential`, `pkg-config`, `cmake`, `autoconf`, `automake`, `libtool`
+  - Build tools: `build-essential`, `pkg-config`, `cmake`, `autoconf`, `automake`, `libtool`, `clang`, `clang-format`
   - Core libs: `libssl-dev`, `libpcre2-dev`, `libreadline-dev`, `libyaml-dev`, `libsqlite3-dev`
   - Coverage: `lcov`
-  - Utilities: `curl`, `git`, `unzip`, `xz-utils`, `ca-certificates`
+  - Utilities: `ca-certificates`, `curl`, `git`, `gnupg`, `jq`, `openssl`, `unzip`, `xz-utils`, `zip`
 
 ## Build
 

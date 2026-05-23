@@ -135,6 +135,20 @@ runs:
             fi
           '
 
+        echo "::group::Tool smoke test"
+        docker run --rm "${IMAGE_TAG}" bash -euxo pipefail -c '
+          gpg_version="$(gpg --version)"
+          printf "%s\n" "${gpg_version}" | sed -n "1p"
+          jq --version
+          zip -v | sed -n "1,2p"
+          clang_version="$(clang --version)"
+          printf "%s\n" "${clang_version}" | sed -n "1p"
+          clang-format --version
+          openssl version
+          command -v gpg jq zip clang clang-format openssl
+        '
+        echo "::endgroup::"
+
         echo "::group::LuaRocks smoke test: luacov installation"
         docker run --rm "${IMAGE_TAG}" bash -euxo pipefail -c '
           luarocks install luacov

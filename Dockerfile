@@ -11,6 +11,11 @@ RUN set -eux; \
       ca-certificates \
       curl \
       git \
+      clang \
+      clang-format \
+      gnupg \
+      jq \
+      openssl \
       build-essential \
       pkg-config \
       cmake \
@@ -24,6 +29,7 @@ RUN set -eux; \
       libsqlite3-dev \
       lcov \
       unzip \
+      zip \
       xz-utils; \
     rm -rf /var/lib/apt/lists/*
 

@@ -2,7 +2,7 @@ name: image-build
 description: Build and test Lua CI image (no push)
 inputs:
   debian_suite:
-    description: Debian suite (e.g., bullseye, bookworm)
+    description: Debian suite (e.g., bullseye, bookworm, trixie)
     required: true
 outputs:
   lua_path:

@@ -4,7 +4,7 @@
 
 Custom Docker image for GitHub Actions CI with lenv-managed Lua/LuaRocks.
 
-- Base image: `debian:<suite>-slim` (default: `bookworm-slim`, override via `DEBIAN_SUITE` build-arg; images are built for `bullseye`, `bookworm`, and `trixie`)
+- Base image: `debian:<suite>-slim` (default: `bookworm-slim`, override via `DEBIAN_SUITE` build-arg; images are built for `bullseye`, `bookworm`, and `trixie`, each for `linux/amd64` and `linux/arm64`)
 - Lua/LuaRocks installer: [lenv v0.9.1](https://github.com/mah0x211/lenv)
 - Installed Lua versions: `5.1.x`, `5.2.x`, `5.3.x`, `5.4.x`, `LuaJIT v2.1` (latest patch available in lenv; switch via `LUA_VERSION` env)
 - LuaRocks: latest available in lenv
@@ -37,10 +37,12 @@ docker build \
 
 For another suite (e.g., `bullseye` or `trixie`), add `--build-arg DEBIAN_SUITE=<suite>` to both builds.
 
+For another architecture (e.g., Apple Silicon), pass `--platform linux/arm64` to both builds (requires Docker BuildKit / buildx).
+
 ## CI / Release workflows (GitHub Actions)
 
 - `build.yml`: runs on branch pushes (tags are ignored; docs/licence-only changes are ignored), builds and smoke-tests (no push).
-- `release.yml`: runs when a date-based Git tag is pushed (e.g. `20250521` or `20250521-1`, and only if the tag is reachable from `master`), builds/pushes `bullseye`/`bookworm`/`trixie` images to GHCR with tags:
+- `release.yml`: runs when a date-based Git tag is pushed (e.g. `20250521` or `20250521-1`, and only if the tag is reachable from `master`), builds/pushes `bullseye`/`bookworm`/`trixie` images to GHCR for `linux/amd64` and `linux/arm64` (each arch is built on its native runner, then merged into a single multi-platform manifest), with tags:
   - `${suite}-${git_tag}` (e.g. `bookworm-20250521-1`)
   - `${suite}` (rolling)
   - `latest` (only for ${LATEST_SUITE} in workflow; default bookworm)

@@ -12,7 +12,7 @@ env:
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
@@ -20,6 +20,12 @@ jobs:
     strategy:
       matrix:
         debian_suite: [bullseye, bookworm, trixie]
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
       -
         name: Checkout
@@ -54,27 +60,16 @@ jobs:
           SUITE: ${{ matrix.debian_suite }}
           LATEST_SUITE: ${{ env.LATEST_SUITE }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
-        run: |
-          set -euo pipefail
-
-          TAGS=("${IMAGE_NAME}:${SUITE}-${TAG}" "${IMAGE_NAME}:${SUITE}")
-          if [[ "${SUITE}" == "${LATEST_SUITE}" ]]; then
-            TAGS+=("${IMAGE_NAME}:latest")
-          fi
-
-          {
-            echo 'tags<<EOF'
-            for t in "${TAGS[@]}"; do
-              echo "$t"
-            done
-            echo 'EOF'
-          } | tee -a "$GITHUB_OUTPUT"
+          WITH_ARCH_SUFFIX: '1'               # push arch-suffixed tags only
+          ARCH: ${{ matrix.arch }}
+        run: ./compute_tags.sh
       -
         name: Build & test image
         uses: ./.github/actions/image-build
         id: build_image
         with:
           debian_suite: ${{ matrix.debian_suite }}
+          arch: ${{ matrix.arch }}
       -
         name: Login to GHCR
         uses: docker/login-action@v3
@@ -88,10 +83,58 @@ jobs:
         with:
           context: .
           push: true
-          platforms: linux/amd64
+          platforms: linux/${{ matrix.arch }}
           build-args: |
             DEBIAN_SUITE=${{ matrix.debian_suite }}
             LUA_PATH=${{ steps.build_image.outputs.lua_path }}
             LUA_CPATH=${{ steps.build_image.outputs.lua_cpath }}
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha,scope=${{ matrix.debian_suite }}
+          cache-from: type=gha,scope=${{ matrix.debian_suite }}-${{ matrix.arch }}
+
+  # Merge the per-arch images into a single multi-platform manifest per tag.
+  # publish pushes arch-suffixed tags (e.g. bookworm-20250521-1-amd64); this
+  # job combines -amd64 + -arm64 under the final rolling/versioned/latest tags.
+  manifest:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        debian_suite: [bullseye, bookworm, trixie]
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      -
+        name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+      -
+        name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      -
+        name: Compute image tags
+        id: meta
+        env:
+          TAG: ${{ github.ref_name }}
+          SUITE: ${{ matrix.debian_suite }}
+          LATEST_SUITE: ${{ env.LATEST_SUITE }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+        run: ./compute_tags.sh
+      -
+        name: Create multi-arch manifests
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in ${TAGS}; do
+            docker buildx imagetools create -t "${tag}" "${tag}-amd64" "${tag}-arm64"
+          done

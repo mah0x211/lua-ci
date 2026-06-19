@@ -15,7 +15,7 @@ env:
 
 jobs:
   build-test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
@@ -23,6 +23,12 @@ jobs:
     strategy:
       matrix:
         debian_suite: [bullseye, bookworm, trixie]
+        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
     steps:
       -
         name: Checkout
@@ -32,3 +38,4 @@ jobs:
         uses: ./.github/actions/image-build
         with:
           debian_suite: ${{ matrix.debian_suite }}
+          arch: ${{ matrix.arch }}

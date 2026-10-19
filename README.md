@@ -68,7 +68,7 @@ jobs:
     container:
       image: ghcr.io/mah0x211/lua-ci:latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Switch Lua version
         run: |
           lenv -g use ${{ matrix.lua_version }}

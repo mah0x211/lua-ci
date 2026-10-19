@@ -10,12 +10,18 @@
 #
 
 set -euo pipefail
+export LC_ALL=C
 
-current="${TAG}" # expected YYYYMMDD or YYYYMMDD-N
+# The workflow validates TAG with validate_tag_format.sh first.
+current="${TAG:?TAG is required}"
 
-# Find the latest previous date-like tag (excluding current itself)
-all_tags="$(git tag --list '20*' | grep -E '^20[0-9]{6}(-[0-9]+)?$' || true)"
-prev="$(printf '%s\n' "${all_tags}" | grep -v "^${current}\$" | sort | tail -n1 || true)"
+# Keep Git failures separate from an empty set of matching tags.
+all_tags="$(git tag --list '20*')"
+prev="$(while IFS= read -r tag; do
+    if [[ "${tag}" != "${current}" && "${tag}" =~ ^20[0-9]{6}(-[0-9]+)?$ ]]; then
+        printf '%s\n' "${tag}"
+    fi
+done <<<"${all_tags}" | sort -t- -k1,1n -k2,2n | tail -n1)"
 
 parse_tag() {
     local t="$1"
@@ -29,10 +35,10 @@ parse_tag() {
 }
 
 if [[ -n "${prev}" ]]; then
-    read -r cur_date cur_rev <<<"$(parse_tag "${current}")"
-    read -r prev_date prev_rev <<<"$(parse_tag "${prev}")"
-
-    if (( cur_date < prev_date )) || { (( cur_date == prev_date )) && (( cur_rev <= prev_rev )); }; then
+    # -C -u checks strictly increasing numeric keys, including equal values
+    # written with leading zeros, without shell integer arithmetic.
+    if ! printf '%s\n' "$(parse_tag "${prev}")" "$(parse_tag "${current}")" |
+        sort -C -u -k1,1n -k2,2n; then
         echo "Tag ${current} is not newer than last tag ${prev}" >&2
         exit 1
     fi

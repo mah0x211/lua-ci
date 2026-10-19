@@ -6,6 +6,12 @@ on:
       # Date-based tags, e.g. 20250521 or 20250521-1
       - '20*'
 
+# All release refs share this group; keep running releases and queue later ones.
+concurrency:
+  group: lua-ci-publish
+  queue: max
+  cancel-in-progress: false
+
 env:
   IMAGE_NAME: ghcr.io/mah0x211/lua-ci
   LATEST_SUITE: bookworm

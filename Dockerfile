@@ -52,9 +52,21 @@ RUN set -eux; \
       -o "${TMP_DIR}/${ARCHIVE_NAME}"; \
     curl -fsSL "https://github.com/mah0x211/lenv/releases/download/${LENV_VERSION}/checksums.txt" \
       -o "${TMP_DIR}/checksums.txt"; \
-    EXPECTED="$(grep "${ARCHIVE_NAME}" "${TMP_DIR}/checksums.txt" | awk '{print $1}')" || true; \
+    if ! EXPECTED="$(awk -v archive="${ARCHIVE_NAME}" ' \
+      $2 == archive { \
+        count++; \
+        if (NF != 2 || length($1) != 64 || $1 ~ /[^0-9a-fA-F]/) invalid = 1; \
+        hash = $1; \
+      } \
+      END { \
+        if (count != 1 || invalid) exit 1; \
+        print tolower(hash); \
+      }' "${TMP_DIR}/checksums.txt")"; then \
+      echo "Missing, duplicate, or invalid checksum for ${ARCHIVE_NAME}" >&2; \
+      exit 1; \
+    fi; \
     ACTUAL="$(sha256sum "${TMP_DIR}/${ARCHIVE_NAME}" | awk '{print $1}')"; \
-    if [ -n "${EXPECTED}" ] && [ "${EXPECTED}" != "${ACTUAL}" ]; then \
+    if [ "${EXPECTED}" != "${ACTUAL}" ]; then \
       echo "Checksum verification failed for ${ARCHIVE_NAME}" >&2; \
       echo "Expected: ${EXPECTED}" >&2; \
       echo "Actual:   ${ACTUAL}" >&2; \

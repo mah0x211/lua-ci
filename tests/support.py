@@ -62,7 +62,7 @@ def docker_validation(kind):
         lines = lines[start:end]
     else:
         start = next(i for i, line in enumerate(lines)
-                     if line.lstrip().startswith("expected_lua_path="))
+                     if line.lstrip().startswith("normalize_path_list()"))
         end = start
         while lines[end].rstrip().endswith("\\"):
             end += 1

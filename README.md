@@ -47,6 +47,8 @@ For another architecture (e.g., Apple Silicon), pass `--platform linux/arm64` to
   - `${suite}` (rolling)
   - `latest` (only for ${LATEST_SUITE} in workflow; default bookworm)
 
+Release workflows run one at a time. Tags older than the latest existing date-based tag are rejected.
+
 ## Use
 
 ### GitHub Actions (container job)
@@ -66,7 +68,7 @@ jobs:
     container:
       image: ghcr.io/mah0x211/lua-ci:latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Switch Lua version
         run: |
           lenv -g use ${{ matrix.lua_version }}

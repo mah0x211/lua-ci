@@ -6,6 +6,12 @@ on:
       # Date-based tags, e.g. 20250521 or 20250521-1
       - '20*'
 
+# All release refs share this group; keep running releases and queue later ones.
+concurrency:
+  group: lua-ci-publish
+  queue: max
+  cancel-in-progress: false
+
 env:
   IMAGE_NAME: ghcr.io/mah0x211/lua-ci
   LATEST_SUITE: bookworm
@@ -29,23 +35,23 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
-          fetch-depth: 1
+          fetch-depth: 0
       -
         name: Fetch tags for comparison
         run: git fetch --force --tags --prune
-      -
-        name: Validate tag is reachable from master
-        env:
-          TAG: ${{ github.ref_name }}
-        run: ./validate_tag_reachable_from_master.sh
       -
         name: Validate date tag format
         shell: bash
         env:
           TAG: ${{ github.ref_name }}
         run: ./validate_tag_format.sh
+      -
+        name: Validate tag is reachable from master
+        env:
+          TAG: ${{ github.ref_name }}
+        run: ./validate_tag_reachable_from_master.sh
       -
         name: Validate date tag order
         shell: bash
@@ -106,7 +112,7 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
       -

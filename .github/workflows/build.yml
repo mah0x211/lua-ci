@@ -32,7 +32,11 @@ jobs:
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+      -
+        name: Test validation and release scripts
+        if: matrix.debian_suite == 'bookworm'
+        run: python3 -B -m unittest discover -s tests -v
       -
         name: Build & test image
         uses: ./.github/actions/image-build

@@ -6,7 +6,7 @@ Custom Docker image for GitHub Actions CI with lenv-managed Lua/LuaRocks.
 
 - Base image: `debian:<suite>-slim` (default: `trixie-slim`, override via `DEBIAN_SUITE` build-arg; images are built for `bullseye`, `bookworm`, and `trixie`, each for `linux/amd64` and `linux/arm64`)
 - Lua/LuaRocks installer: [lenv v0.10.0](https://github.com/mah0x211/lenv)
-- Installed Lua versions: `5.1.x`, `5.2.x`, `5.3.x`, `5.4.x`, `LuaJIT v2.1` (latest patch available in lenv; switch via `LUA_VERSION` env)
+- Installed Lua versions: `5.1.x`, `5.2.x`, `5.3.x`, `5.4.x`, `5.5.x`, `LuaJIT v2.1` (latest patch available in lenv; switch via `LUA_VERSION` env)
 - LuaRocks: latest available in lenv
 - Installed tooling and dev libs (for common LuaRocks builds):
   - Build tools: `build-essential`, `pkg-config`, `cmake`, `autoconf`, `automake`, `libtool`, `clang`, `clang-format`

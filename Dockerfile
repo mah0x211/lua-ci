@@ -98,7 +98,7 @@ RUN set -eux; \
 # Keep lenv-managed Lua tools ahead of system binaries.
 ENV PATH="${LENV_ROOT}/current/lua_modules/bin:${LENV_ROOT}/current/bin:${PATH}"
 
-ARG LUA_VERSIONS="5.1. 5.2. 5.3. 5.4. lj-v2.1"
+ARG LUA_VERSIONS="5.1. 5.2. 5.3. 5.4. 5.5. lj-v2.1"
 ARG LUAROCKS_VERSION=latest
 
 # Fetch version metadata and install Lua + LuaRocks.

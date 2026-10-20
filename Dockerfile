@@ -4,6 +4,24 @@ FROM debian:${DEBIAN_SUITE}-slim AS builder
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
+# Prefer active mirrors, with archive fallback when a release moves out of them.
+RUN set -eux; \
+    mkdir -p /etc/apt/mirrors; \
+    printf '%s\tpriority:1\n%s\tpriority:2\n' \
+      'http://deb.debian.org/debian' 'http://archive.debian.org/debian' \
+      > /etc/apt/mirrors/debian.list; \
+    printf '%s\tpriority:1\n%s\tpriority:2\n' \
+      'http://deb.debian.org/debian-security' 'http://archive.debian.org/debian-security' \
+      > /etc/apt/mirrors/debian-security.list; \
+    for source in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do \
+      if [ -f "${source}" ]; then \
+        sed -i \
+          -e 's|http://deb.debian.org/debian-security|mirror+file:/etc/apt/mirrors/debian-security.list|g' \
+          -e 's|http://deb.debian.org/debian|mirror+file:/etc/apt/mirrors/debian.list|g' \
+          "${source}"; \
+      fi; \
+    done
+
 # Build essentials for compiling Lua/LuaRocks and common native modules.
 RUN set -eux; \
     apt-get update; \

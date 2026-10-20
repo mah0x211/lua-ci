@@ -53,6 +53,8 @@ Release workflows run one at a time. Tags older than the latest existing date-ba
 
 ### GitHub Actions (container job)
 
+Prepare the runtime explicitly in job steps rather than relying on the image entrypoint.
+
 ```yaml
 jobs:
   test:
@@ -64,15 +66,22 @@ jobs:
           - 5.2.
           - 5.3.
           - 5.4.
+          - 5.5.
           - lj-v2.1
     container:
       image: ghcr.io/mah0x211/lua-ci:latest
     steps:
       - uses: actions/checkout@v7
-      - name: Switch Lua version
+      - name: Prepare Lua version
+        env:
+          LUA_VERSION: ${{ matrix.lua_version }}
+        shell: bash
         run: |
-          lenv -g use ${{ matrix.lua_version }}
-          lua -v || true
+          if [[ "${LUA_VERSION}" == lj-* ]]; then
+            lenv -g install --fetch --if-missing "${LUA_VERSION}:latest"
+          else
+            lenv -g install --fetch --if-missing "${LUA_VERSION}:latest" linux
+          fi
       - name: Show versions
         run: |
           lua -v

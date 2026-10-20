@@ -4,7 +4,7 @@
 
 Custom Docker image for GitHub Actions CI with lenv-managed Lua/LuaRocks.
 
-- Base image: `debian:<suite>-slim` (default: `bookworm-slim`, override via `DEBIAN_SUITE` build-arg; images are built for `bullseye`, `bookworm`, and `trixie`, each for `linux/amd64` and `linux/arm64`)
+- Base image: `debian:<suite>-slim` (default: `trixie-slim`, override via `DEBIAN_SUITE` build-arg; images are built for `bullseye`, `bookworm`, and `trixie`, each for `linux/amd64` and `linux/arm64`)
 - Lua/LuaRocks installer: [lenv v0.9.1](https://github.com/mah0x211/lenv)
 - Installed Lua versions: `5.1.x`, `5.2.x`, `5.3.x`, `5.4.x`, `LuaJIT v2.1` (latest patch available in lenv; switch via `LUA_VERSION` env)
 - LuaRocks: latest available in lenv
@@ -18,7 +18,7 @@ Custom Docker image for GitHub Actions CI with lenv-managed Lua/LuaRocks.
 
 > Note: The Dockerfile expects `LUA_PATH` / `LUA_CPATH` via build-args and verifies them against lenv output. For local builds, follow a two-step flow: extract paths first, then rebuild with those args.
 
-Example (bookworm):
+Example (trixie):
 
 ```sh
 # 1) Build & load the builder stage
@@ -35,7 +35,7 @@ docker build \
   -t ghcr.io/mah0x211/lua-ci:latest .
 ```
 
-For another suite (e.g., `bullseye` or `trixie`), add `--build-arg DEBIAN_SUITE=<suite>` to both builds.
+For another suite (e.g., `bullseye` or `bookworm`), add `--build-arg DEBIAN_SUITE=<suite>` to both builds.
 
 For another architecture (e.g., Apple Silicon), pass `--platform linux/arm64` to both builds (requires Docker BuildKit / buildx).
 
@@ -45,7 +45,7 @@ For another architecture (e.g., Apple Silicon), pass `--platform linux/arm64` to
 - `release.yml`: runs when a date-based Git tag is pushed (e.g. `20250521` or `20250521-1`, and only if the tag is reachable from `master`), builds/pushes `bullseye`/`bookworm`/`trixie` images to GHCR for `linux/amd64` and `linux/arm64` (each arch is built on its native runner, then merged into a single multi-platform manifest), with tags:
   - `${suite}-${git_tag}` (e.g. `bookworm-20250521-1`)
   - `${suite}` (rolling)
-  - `latest` (only for ${LATEST_SUITE} in workflow; default bookworm)
+  - `latest` (only for ${LATEST_SUITE} in workflow; default trixie)
 
 Release workflows run one at a time. Tags older than the latest existing date-based tag are rejected.
 

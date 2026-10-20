@@ -1,4 +1,4 @@
-ARG DEBIAN_SUITE=bookworm
+ARG DEBIAN_SUITE=trixie
 
 FROM debian:${DEBIAN_SUITE}-slim AS builder
 

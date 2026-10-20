@@ -6,7 +6,7 @@ class ReleaseTests(FixtureTest):
         image = "example.invalid/lua-ci"
         for suite in ("bullseye", "bookworm", "trixie"):
             base = [f"{image}:{suite}-20261020-10", f"{image}:{suite}"]
-            if suite == "bookworm":
+            if suite == "trixie":
                 base.append(f"{image}:latest")
             for arch in ("", "amd64", "arm64"):
                 with self.subTest(suite=suite, arch=arch):
@@ -14,7 +14,7 @@ class ReleaseTests(FixtureTest):
                     output.write_text("")
                     result = self.script(
                         "compute_tags.sh", IMAGE_NAME=image, TAG="20261020-10",
-                        SUITE=suite, LATEST_SUITE="bookworm",
+                        SUITE=suite, LATEST_SUITE="trixie",
                         WITH_ARCH_SUFFIX="1" if arch else "", ARCH=arch,
                         GITHUB_OUTPUT=str(output))
                     self.assertExit(result, 0)
@@ -25,7 +25,7 @@ class ReleaseTests(FixtureTest):
     def test_arch_is_required(self):
         result = self.script(
             "compute_tags.sh", IMAGE_NAME="example.invalid/lua-ci",
-            TAG="20261020", SUITE="bookworm", LATEST_SUITE="bookworm",
+            TAG="20261020", SUITE="bookworm", LATEST_SUITE="trixie",
             WITH_ARCH_SUFFIX="1", ARCH="")
         self.assertNotEqual(result.returncode, 0)
 

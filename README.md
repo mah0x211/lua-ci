@@ -4,9 +4,9 @@
 
 Custom Docker image for GitHub Actions CI with lenv-managed Lua/LuaRocks.
 
-- Base image: `debian:<suite>-slim` (default: `bookworm-slim`, override via `DEBIAN_SUITE` build-arg; images are built for `bullseye`, `bookworm`, and `trixie`, each for `linux/amd64` and `linux/arm64`)
-- Lua/LuaRocks installer: [lenv v0.9.1](https://github.com/mah0x211/lenv)
-- Installed Lua versions: `5.1.x`, `5.2.x`, `5.3.x`, `5.4.x`, `LuaJIT v2.1` (latest patch available in lenv; switch via `LUA_VERSION` env)
+- Base image: `debian:<suite>-slim` (default: `trixie-slim`, override via `DEBIAN_SUITE` build-arg; images are built for `bullseye`, `bookworm`, and `trixie`, each for `linux/amd64` and `linux/arm64`)
+- Lua/LuaRocks installer: [lenv v0.10.0](https://github.com/mah0x211/lenv)
+- Installed Lua versions: `5.1.x`, `5.2.x`, `5.3.x`, `5.4.x`, `5.5.x`, `LuaJIT v2.1` (latest patch available in lenv; switch via `LUA_VERSION` env)
 - LuaRocks: latest available in lenv
 - Installed tooling and dev libs (for common LuaRocks builds):
   - Build tools: `build-essential`, `pkg-config`, `cmake`, `autoconf`, `automake`, `libtool`, `clang`, `clang-format`
@@ -18,7 +18,7 @@ Custom Docker image for GitHub Actions CI with lenv-managed Lua/LuaRocks.
 
 > Note: The Dockerfile expects `LUA_PATH` / `LUA_CPATH` via build-args and verifies them against lenv output. For local builds, follow a two-step flow: extract paths first, then rebuild with those args.
 
-Example (bookworm):
+Example (trixie):
 
 ```sh
 # 1) Build & load the builder stage
@@ -35,7 +35,7 @@ docker build \
   -t ghcr.io/mah0x211/lua-ci:latest .
 ```
 
-For another suite (e.g., `bullseye` or `trixie`), add `--build-arg DEBIAN_SUITE=<suite>` to both builds.
+For another suite (e.g., `bullseye` or `bookworm`), add `--build-arg DEBIAN_SUITE=<suite>` to both builds.
 
 For another architecture (e.g., Apple Silicon), pass `--platform linux/arm64` to both builds (requires Docker BuildKit / buildx).
 
@@ -45,13 +45,15 @@ For another architecture (e.g., Apple Silicon), pass `--platform linux/arm64` to
 - `release.yml`: runs when a date-based Git tag is pushed (e.g. `20250521` or `20250521-1`, and only if the tag is reachable from `master`), builds/pushes `bullseye`/`bookworm`/`trixie` images to GHCR for `linux/amd64` and `linux/arm64` (each arch is built on its native runner, then merged into a single multi-platform manifest), with tags:
   - `${suite}-${git_tag}` (e.g. `bookworm-20250521-1`)
   - `${suite}` (rolling)
-  - `latest` (only for ${LATEST_SUITE} in workflow; default bookworm)
+  - `latest` (only for ${LATEST_SUITE} in workflow; default trixie)
 
 Release workflows run one at a time. Tags older than the latest existing date-based tag are rejected.
 
 ## Use
 
 ### GitHub Actions (container job)
+
+Prepare the runtime explicitly in job steps rather than relying on the image entrypoint.
 
 ```yaml
 jobs:
@@ -64,15 +66,22 @@ jobs:
           - 5.2.
           - 5.3.
           - 5.4.
+          - 5.5.
           - lj-v2.1
     container:
       image: ghcr.io/mah0x211/lua-ci:latest
     steps:
       - uses: actions/checkout@v7
-      - name: Switch Lua version
+      - name: Prepare Lua version
+        env:
+          LUA_VERSION: ${{ matrix.lua_version }}
+        shell: bash
         run: |
-          lenv -g use ${{ matrix.lua_version }}
-          lua -v || true
+          if [[ "${LUA_VERSION}" == lj-* ]]; then
+            lenv -g install --fetch --if-missing "${LUA_VERSION}:latest"
+          else
+            lenv -g install --fetch --if-missing "${LUA_VERSION}:latest" linux
+          fi
       - name: Show versions
         run: |
           lua -v
@@ -84,6 +93,10 @@ jobs:
 ```
 
 ### Local docker run
+
+Without `LUA_VERSION`, the image uses the preinstalled Lua 5.4 selection without fetching metadata. With `LUA_VERSION`, the entrypoint runs `lenv -g install --fetch --if-missing` to refresh version lists, install missing versions, and select the requested runtime. This requires network access even for installed versions; a refresh or installation failure stops the container command.
+
+A value without a colon, such as `5.4.` or `lj-v2.1`, also selects the latest LuaRocks. An explicit suffix, such as `5.4.:3.13.0` or `5.4.:`, is passed to lenv unchanged.
 
 ```sh
 docker run --rm ghcr.io/mah0x211/lua-ci:latest lua -v

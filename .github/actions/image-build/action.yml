@@ -95,7 +95,10 @@ runs:
 
           echo "::group::Lua smoke test: ${label}"
           local out
-          out="$(docker run --rm -e LUA_VERSION=${lua_version} "${IMAGE_TAG}" lua -v 2>&1 || true)"
+          if ! out="$(docker run --rm -e "LUA_VERSION=${lua_version}" "${IMAGE_TAG}" lua -v 2>&1)"; then
+            printf '%s\n' "${out}" >&2
+            exit 1
+          fi
           echo "${out}"
           if ! grep -qE "${pattern}" <<<"${out}"; then
             echo "Unexpected Lua version for ${label}: ${out}" >&2
@@ -109,9 +112,13 @@ runs:
         check_lua "5.2."
         check_lua "5.3."
         check_lua "5.4."
+        check_lua "5.5."
         check_lua "lj-v2.1"
 
-        lr_out="$(docker run --rm "${IMAGE_TAG}" luarocks --version 2>&1 || true)"
+        if ! lr_out="$(docker run --rm "${IMAGE_TAG}" luarocks --version 2>&1)"; then
+          printf '%s\n' "${lr_out}" >&2
+          exit 1
+        fi
         echo "${lr_out}"
         if ! grep -qi 'luarocks' <<<"${lr_out}"; then
           echo "Unexpected or missing LuaRocks: ${lr_out}" >&2
@@ -158,3 +165,9 @@ runs:
           luarocks install luacov
           lua -e "require(\"luacov\")"
         '
+    -
+      name: Test runtime preparation
+      env:
+        IMAGE: ghcr.io/mah0x211/lua-ci:local
+      shell: bash
+      run: bash tests/test_entrypoint.sh "${IMAGE}"

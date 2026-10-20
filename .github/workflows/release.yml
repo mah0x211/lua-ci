@@ -14,7 +14,7 @@ concurrency:
 
 env:
   IMAGE_NAME: ghcr.io/mah0x211/lua-ci
-  LATEST_SUITE: bookworm
+  LATEST_SUITE: trixie
 
 jobs:
   publish:

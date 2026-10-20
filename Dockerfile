@@ -52,7 +52,7 @@ RUN set -eux; \
     rm -rf /var/lib/apt/lists/*
 
 # lenv installation
-ARG LENV_VERSION=v0.9.1
+ARG LENV_VERSION=v0.10.0
 ARG TARGETARCH
 ENV LENV_ROOT=/usr/local/lenv
 

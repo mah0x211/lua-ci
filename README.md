@@ -5,7 +5,7 @@
 Custom Docker image for GitHub Actions CI with lenv-managed Lua/LuaRocks.
 
 - Base image: `debian:<suite>-slim` (default: `trixie-slim`, override via `DEBIAN_SUITE` build-arg; images are built for `bullseye`, `bookworm`, and `trixie`, each for `linux/amd64` and `linux/arm64`)
-- Lua/LuaRocks installer: [lenv v0.9.1](https://github.com/mah0x211/lenv)
+- Lua/LuaRocks installer: [lenv v0.10.0](https://github.com/mah0x211/lenv)
 - Installed Lua versions: `5.1.x`, `5.2.x`, `5.3.x`, `5.4.x`, `LuaJIT v2.1` (latest patch available in lenv; switch via `LUA_VERSION` env)
 - LuaRocks: latest available in lenv
 - Installed tooling and dev libs (for common LuaRocks builds):
@@ -84,6 +84,10 @@ jobs:
 ```
 
 ### Local docker run
+
+Without `LUA_VERSION`, the image uses the preinstalled Lua 5.4 selection without fetching metadata. With `LUA_VERSION`, the entrypoint runs `lenv -g install --fetch --if-missing` to refresh version lists, install missing versions, and select the requested runtime. This requires network access even for installed versions; a refresh or installation failure stops the container command.
+
+A value without a colon, such as `5.4.` or `lj-v2.1`, also selects the latest LuaRocks. An explicit suffix, such as `5.4.:3.13.0` or `5.4.:`, is passed to lenv unchanged.
 
 ```sh
 docker run --rm ghcr.io/mah0x211/lua-ci:latest lua -v
